@@ -1,0 +1,54 @@
+{{!-- views/movie-edit.hbs --}}
+
+<div class="container py-5">
+  <h1 class="mb-4">
+    {{#if (eq mode "edit")}}Edit Movie{{else}}Add Movie{{/if}}
+  </h1>
+
+  <form method="POST"
+        action="{{#if (eq mode "edit")}}/movie/{{movie.id}}?_method=PUT{{else}}/movies{{/if}}">
+
+    {{!-- Only show ID input on create --}}
+    {{#unless movie.id}}
+    <div class="mb-3">
+      <label class="form-label">TMDB ID</label>
+      <input type="number" name="id" class="form-control" required>
+    </div>
+    {{/unless}}
+
+    <div class="mb-3">
+      <label class="form-label">Title</label>
+      <input type="text" name="title" class="form-control" value="{{movie.title}}" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Poster URL</label>
+      <input type="text" name="poster_url" class="form-control" value="{{movie.poster_url}}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Overview</label>
+      <textarea name="overview" class="form-control" rows="4">{{movie.overview}}</textarea>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="form-label">Rating</label>
+        <input type="number" step="0.1" name="vote_average" class="form-control" value="{{movie.vote_average}}">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="form-label">Runtime (min)</label>
+        <input type="number" name="runtime" class="form-control" value="{{movie.runtime}}">
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="form-label">Release Date</label>
+        <input type="date" name="release_date" class="form-control" value="{{movie.release_date}}">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary rounded-pill px-4">
+      {{#if (eq mode "edit")}}Save Changes{{else}}Create Movie{{/if}}
+    </button>
+    <a href="/movies" class="btn btn-outline-secondary rounded-pill px-4 ms-2">Cancel</a>
+  </form>
+</div>

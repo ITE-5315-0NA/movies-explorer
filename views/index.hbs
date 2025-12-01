@@ -1,0 +1,24 @@
+<h1>Movies</h1>
+
+<div class="movies-container">
+  {{#each movies}}
+    <div class="movie-card">
+      <img src="{{poster_url}}" alt="{{title}}" width="150">
+      <h3>{{title}}</h3>
+      <p>{{overview}}</p>
+      <p>Rating: {{vote_average}}</p>
+    </div>
+  {{/each}}
+</div>
+
+<div class="pagination">
+  {{#if (gt currentPage 1)}}
+    <a href="/?page={{subtract currentPage 1}}">Previous</a>
+  {{/if}}
+
+  <span>Page {{currentPage}} of {{totalPages}}</span>
+
+  {{#if (lt currentPage totalPages)}}
+    <a href="/?page={{add currentPage 1}}">Next</a>
+  {{/if}}
+</div>

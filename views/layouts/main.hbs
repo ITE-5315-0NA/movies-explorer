@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{title}} | Movie Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar shadow-sm py-3">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a href="/" class="navbar-brand d-flex align-items-center">
+        <span class="fs-3 fw-bold">🎬 Movies Explorer</span>
+      </a>
+<form class="flex-grow-1 mx-4" action="/movies" method="get">
+  <div class="input-group">
+    <!-- Text search: name/title -->
+    <input
+      type="text"
+      name="q"
+      class="form-control"
+      placeholder="Search by movie name..."
+      value="{{query}}">
+
+    <!-- Genre filter -->
+    <select name="genre" class="form-select" style="max-width: 150px;">
+      <option value="">All genres</option>
+      {{#each genres}}
+      <option value="{{this}}" {{#if (eq ../genre this)}}selected{{/if}}>
+        {{this}}
+      </option>
+      {{/each}}
+    </select>
+
+    <!-- Rating filter -->
+    <select name="minRating" class="form-select" style="max-width: 150px;">
+      <option value="">Any rating</option>
+      <option value="9"  {{#if (eq minRating "9")}}selected{{/if}}>9+ ★</option>
+      <option value="8"  {{#if (eq minRating "8")}}selected{{/if}}>8+ ★</option>
+      <option value="7"  {{#if (eq minRating "7")}}selected{{/if}}>7+ ★</option>
+      <option value="6"  {{#if (eq minRating "6")}}selected{{/if}}>6+ ★</option>
+    </select>
+
+    <button class="btn btn-primary" type="submit">
+      🔍
+    </button>
+  </div>
+</form>
+
+
+
+      <a href="/movies/new" class="btn btn-primary rounded-pill px-4">
+        + Add new movie
+      </a>
+    </div>
+  </nav>
+
+  <div class="container py-5">
+    {{{body}}}
+  </div>
+</body>
+</html>

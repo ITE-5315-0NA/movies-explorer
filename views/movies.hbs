@@ -1,0 +1,94 @@
+<div class="mb-5 text-center">
+  <h1 class="display-5 fw-bold mb-1">
+    <span class="text-gradient">All Movies</span>
+  </h1>
+
+
+  {{#if query}}
+  <small class="text-muted">Results for “{{query}}”</small>
+  {{/if}}
+</div>
+
+{{#if movies.length}}
+<div class="row g-4">
+  {{#each movies}}
+  <div class="col-md-3">
+    <div class="card h-100 border-0 shadow-sm movie-card">
+
+      <!-- POSTER: only real image, no fallback -->
+      <div class="ratio ratio-4x3 position-relative">
+  {{#if poster_url}}
+  <img
+    src="{{poster_url}}"
+    alt="{{title}}"
+    class="card-img-top object-fit-cover movie-poster-img"
+    onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');"
+  >
+  <div class="poster-fallback d-none align-items-center justify-content-center">
+    <span class="fallback-text">{{title}}</span>
+  </div>
+  {{else}}
+  <div class="poster-fallback d-flex align-items-center justify-content-center">
+    <span class="fallback-text">{{title}}</span>
+  </div>
+  {{/if}}
+</div>
+
+
+      <!-- CARD BODY -->
+      <div class="card-body">
+        <h5 class="card-title mb-2">{{title}}</h5>
+
+        <div class="mb-2">
+          <span class="badge bg-secondary me-1">{{year}}</span>
+          <span class="badge bg-secondary me-1">{{rating}} ★</span>
+        </div>
+
+        <p class="mb-1 text-muted">{{genresText}}</p>
+        <p class="mb-1 text-muted">{{countryText}}</p>
+        <p class="card-text small text-truncate-3">
+          {{overviewShort}}
+        </p>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="card-footer bg-black border-0 d-flex justify-content-between align-items-center">
+        <div>
+          <small class="text-muted">{{runtimeText}}</small>
+        </div>
+        <a href="/movie/{{id}}" class="btn btn-primary btn-sm rounded-pill px-3">
+          View Details
+        </a>
+      </div>
+
+    </div>
+  </div>
+  {{/each}}
+</div>
+{{else}}
+<p>No movies found.</p>
+{{/if}}
+
+{{#if totalPages}}
+<nav class="mt-4 d-flex justify-content-center">
+  <ul class="pagination pagination-lg">
+    {{#if hasPrevPage}}
+    <li class="page-item">
+      <a class="page-link" href="/movies?page={{prevPage}}&q={{query}}">Previous</a>
+    </li>
+    {{/if}}
+
+    <li class="page-item disabled">
+      <span class="page-link">
+        Page {{currentPage}} of {{totalPages}}
+      </span>
+    </li>
+
+    {{#if hasNextPage}}
+    <li class="page-item">
+      <a class="page-link" href="/movies?page={{nextPage}}&q={{query}}">Next</a>
+    </li>
+    {{/if}}
+  </ul>
+</nav>
+{{/if}}
