@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const methodOverride = require('method-override');
 require('dotenv').config();
 
-const Movie = require('./models/Movie'); // Mongoose model
+const Movie = require('./models/movie'); // Mongoose model
 
 const app = express();
 const PORT = process.env.PORT || 5000;
