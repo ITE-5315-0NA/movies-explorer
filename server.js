@@ -480,7 +480,14 @@ app.use((req, res) => {
   });
 });
 
-// ---------- START SERVER ----------
-app.listen(PORT, () => {
-  console.log(`🎬 Movies app running at http://localhost:${PORT}`);
-});
+// Export for Vercel serverless
+module.exports = app;
+
+// Local development only
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🎬 Running locally at http://localhost:${PORT}`);
+  });
+}
+
