@@ -6,7 +6,11 @@ const mongoose = require('mongoose');
 const methodOverride = require('method-override');
 require('dotenv').config();
 
-const Movie = require('./models/movie'); // Mongoose model
+const Movie = require('./models/movie');        // Movie model
+const User = require('./models/user');          // User model
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const auth = require('./middleware/auth');      // auth middleware
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,8 +18,7 @@ const PORT = process.env.PORT || 5000;
 // ---------- MONGOOSE CONNECTION ----------
 async function connectDB() {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-    });
+    await mongoose.connect(process.env.MONGO_URI, {});
     console.log('✅ MongoDB Atlas connected');
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
@@ -41,8 +44,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- BODY PARSING & METHOD OVERRIDE ----------
 app.use(express.urlencoded({ extended: true })); // parse form data
-app.use(express.json());                          // parse JSON for API
-app.use(methodOverride('_method'));               // support PUT/DELETE in forms
+app.use(express.json());                         // parse JSON for API
+app.use(methodOverride('_method'));              // support PUT/DELETE in forms
 
 // ---------- HELPERS TO FLATTEN MOVIE DATA ----------
 function mapMovieForCard(movie) {
@@ -73,7 +76,7 @@ function mapMovieForCard(movie) {
 
   return {
     id: movie.id,
-    title: safeTitle,                    
+    title: safeTitle,
     year,
     poster_url: typeof movie.poster_url === 'string' ? movie.poster_url : '',
     genresText: genres,
@@ -116,6 +119,72 @@ function mapMovieForDetail(movie) {
   };
 }
 
+// ---------- AUTH ROUTES (JWT) ----------
+
+// Render register form
+app.get('/auth/register', (req, res) => {
+  res.render('auth-register', { title: 'Register' });
+});
+
+// Render login form
+app.get('/auth/login', (req, res) => {
+  res.render('auth-login', { title: 'Login' });
+});
+
+// Register user
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { email, password, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    const user = new User({ email, password, role });
+    await user.save();
+
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Login user
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+
+    const payload = { id: user._id, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d',
+    });
+
+    res.json({
+      token,
+      user: { id: user._id, email: user.email, role: user.role }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ---------- ROUTES ----------
 
 // Home → redirect to listings
@@ -126,8 +195,8 @@ app.get('/', (req, res) => {
 // All listings with search + pagination + genre + rating filters
 app.get('/movies', async (req, res) => {
   try {
-    const query = req.query.q || '';                // name search
-    const genreFilter = req.query.genre || '';      // selected genre
+    const query = req.query.q || '';               // name search
+    const genreFilter = req.query.genre || '';     // selected genre
     const minRating = req.query.minRating
       ? Number(req.query.minRating)
       : null;
@@ -137,11 +206,11 @@ app.get('/movies', async (req, res) => {
     const skip = (page - 1) * limit;
 
    const baseFilter = {
-  poster_url: {
-    $type: 'string',
-    $ne: ''
-  }
-};
+      poster_url: {
+       $type: 'string',
+        $ne: ''
+      }
+    };
 
     const andConditions = [];
 
@@ -151,19 +220,17 @@ app.get('/movies', async (req, res) => {
       });
     }
 
-   if (genreFilter) {
-  andConditions.push({
-    'genres.name': { $regex: genreFilter, $options: 'i' }
-  });
-}
+    if (genreFilter) {
+      andConditions.push({
+        'genres.name': { $regex: genreFilter, $options: 'i' }
+      });
+    }
 
-
-   if (minRating !== null && !Number.isNaN(minRating)) {
+    if (minRating !== null && !Number.isNaN(minRating)) {
       andConditions.push({
         vote_average: { $gte: minRating }
       });
     }
-
 
     if (andConditions.length > 0) {
       baseFilter.$and = andConditions;
@@ -180,7 +247,6 @@ app.get('/movies', async (req, res) => {
 
     const moviesMapped = moviesRaw.map(mapMovieForCard);
 
-    // Keep only movies with both a title and a non-empty poster_url string
     const movies = moviesMapped.filter(
       m => typeof m.title === 'string' && m.title.trim() !== '' &&
            typeof m.poster_url === 'string' && m.poster_url.trim() !== ''
@@ -241,7 +307,7 @@ app.get('/movie/:id', async (req, res) => {
   }
 });
 
-// Show edit form
+// PROTECTED: Show edit form
 app.get('/movie/:id/edit', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -263,8 +329,8 @@ app.get('/movie/:id/edit', async (req, res) => {
   }
 });
 
-// Handle edit submit (update)
-app.put('/movie/:id', async (req, res) => {
+// PROTECTED: Handle edit submit (legacy HTML route; optional)
+app.put('/movie/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id);
 
@@ -276,7 +342,6 @@ app.put('/movie/:id', async (req, res) => {
         poster_url: req.body.poster_url,
         runtime: Number(req.body.runtime) || null,
         release_date: req.body.release_date || null
-        // add other fields you allow editing
       }
     );
 
@@ -287,8 +352,8 @@ app.put('/movie/:id', async (req, res) => {
   }
 });
 
-// Handle delete
-app.delete('/movie/:id', async (req, res) => {
+// PROTECTED: Handle delete (legacy HTML route; optional)
+app.delete('/movie/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id);
     await Movie.deleteOne({ id });
@@ -299,7 +364,7 @@ app.delete('/movie/:id', async (req, res) => {
   }
 });
 
-// Show create form
+// Show create form (PAGE IS PUBLIC; saving is protected via /api/movies)
 app.get('/movies/new', (req, res) => {
   res.render('movie-edit', {
     mode: 'create',
@@ -307,8 +372,8 @@ app.get('/movies/new', (req, res) => {
   });
 });
 
-// Handle create submit (from form)
-app.post('/movies', async (req, res) => {
+// (Optional legacy HTML POST /movies remains protected)
+app.post('/movies', auth(), async (req, res) => {
   try {
     const movieData = {
       id: Number(req.body.id),
@@ -318,10 +383,8 @@ app.post('/movies', async (req, res) => {
       vote_average: req.body.vote_average ? Number(req.body.vote_average) : null,
       runtime: req.body.runtime ? Number(req.body.runtime) : null,
       release_date: req.body.release_date || null,
-
-      // satisfy required schema fields
       budget: req.body.budget ? Number(req.body.budget) : 0,
-      adult: req.body.adult === 'on' || req.body.adult === 'true' ? true : false
+      adult: req.body.adult === 'on' || req.body.adult === 'true'
     };
 
     const movie = new Movie(movieData);
@@ -336,8 +399,6 @@ app.post('/movies', async (req, res) => {
     });
   }
 });
-
-
 
 // ---------- JSON API ROUTES ----------
 
@@ -371,11 +432,10 @@ app.get('/api/movies', async (req, res) => {
     }
 
     if (genreFilter) {
-  andConditions.push({
-    'genres.name': { $regex: genreFilter, $options: 'i' }
-  });
-}
-
+      andConditions.push({
+        'genres.name': { $regex: genreFilter, $options: 'i' }
+      });
+    }
 
     if (minRating !== null) {
       andConditions.push({
@@ -426,8 +486,8 @@ app.get('/api/movies/:id', async (req, res) => {
   }
 });
 
-// POST /api/movies  -> create new movie
-app.post('/api/movies', async (req, res) => {
+// PROTECTED: POST /api/movies  -> create new movie
+app.post('/api/movies', auth(), async (req, res) => {
   try {
     const movie = new Movie(req.body);
     await movie.save();
@@ -438,8 +498,8 @@ app.post('/api/movies', async (req, res) => {
   }
 });
 
-// PUT /api/movies/:id  -> update movie
-app.put('/api/movies/:id', async (req, res) => {
+// PROTECTED: PUT /api/movies/:id  -> update movie
+app.put('/api/movies/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const updated = await Movie.findOneAndUpdate(
@@ -457,8 +517,8 @@ app.put('/api/movies/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/movies/:id  -> delete movie
-app.delete('/api/movies/:id', async (req, res) => {
+// PROTECTED: DELETE /api/movies/:id  -> delete movie
+app.delete('/api/movies/:id', auth(), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const result = await Movie.deleteOne({ id });
@@ -485,9 +545,8 @@ module.exports = app;
 
 // Local development only
 if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🎬 Running locally at http://localhost:${PORT}`);
+  const PORT_LOCAL = process.env.PORT || 3000;
+  app.listen(PORT_LOCAL, () => {
+    console.log(`🎬 Running locally at http://localhost:${PORT_LOCAL}`);
   });
 }
-

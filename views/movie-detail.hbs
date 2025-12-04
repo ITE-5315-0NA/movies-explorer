@@ -55,17 +55,67 @@
       </a>
       {{/if}}
 
-      <a href="/movie/{{id}}/edit" class="btn btn-outline-secondary rounded-pill px-4 ms-2">
+      <!-- Edit & Delete: only visible when logged in (via JS) -->
+      <a href="/movie/{{id}}/edit"
+         id="editBtn"
+         class="btn btn-outline-secondary rounded-pill px-4 ms-2">
         Edit
       </a>
 
-      <form method="POST" action="/movie/{{id}}?_method=DELETE" class="d-inline">
-        <button type="submit"
-                class="btn btn-outline-danger rounded-pill px-4 ms-2"
-                onclick="return confirm('Delete this movie?');">
-          Delete
-        </button>
-      </form>
+      <button id="deleteBtn"
+              class="btn btn-outline-danger rounded-pill px-4 ms-2">
+        Delete
+      </button>
+
+      <p class="text-danger mt-3" id="detailError" style="display:none;"></p>
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  const token = localStorage.getItem('jwt');
+  const editBtn = document.getElementById('editBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const errorEl = document.getElementById('detailError');
+
+  // Hide edit/delete completely if NOT logged in
+  if (!token) {
+    if (editBtn) editBtn.style.display = 'none';
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    return;
+  }
+
+  // Logged in: allow delete via protected API
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Delete this movie?')) return;
+
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+
+      try {
+        const res = await fetch('/api/movies/{{id}}', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Delete failed.';
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        window.location.href = '/movies';
+      } catch (err) {
+        errorEl.textContent = 'Network error while deleting movie.';
+        errorEl.style.display = 'block';
+      }
+    });
+  }
+})();
+</script>

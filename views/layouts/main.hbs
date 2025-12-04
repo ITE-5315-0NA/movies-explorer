@@ -15,51 +15,93 @@
       <a href="/" class="navbar-brand d-flex align-items-center">
         <span class="fs-3 fw-bold">🎬 Movies Explorer</span>
       </a>
-<form class="flex-grow-1 mx-4" action="/movies" method="get">
-  <div class="input-group">
-    <!-- Text search: name/title -->
-    <input
-      type="text"
-      name="q"
-      class="form-control"
-      placeholder="Search by movie name..."
-      value="{{query}}">
 
-    <!-- Genre filter -->
-    <select name="genre" class="form-select" style="max-width: 150px;">
-      <option value="">All genres</option>
-      {{#each genres}}
-      <option value="{{this}}" {{#if (eq ../genre this)}}selected{{/if}}>
-        {{this}}
-      </option>
-      {{/each}}
-    </select>
+      <form class="flex-grow-1 mx-4" action="/movies" method="get">
+        <div class="input-group">
+          <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Search by movie name..."
+            value="{{query}}">
 
-    <!-- Rating filter -->
-    <select name="minRating" class="form-select" style="max-width: 150px;">
-      <option value="">Any rating</option>
-      <option value="9"  {{#if (eq minRating "9")}}selected{{/if}}>9+ ★</option>
-      <option value="8"  {{#if (eq minRating "8")}}selected{{/if}}>8+ ★</option>
-      <option value="7"  {{#if (eq minRating "7")}}selected{{/if}}>7+ ★</option>
-      <option value="6"  {{#if (eq minRating "6")}}selected{{/if}}>6+ ★</option>
-    </select>
+          <select name="genre" class="form-select" style="max-width: 150px;">
+            <option value="">All genres</option>
+            {{#each genres}}
+            <option value="{{this}}" {{#if (eq ../genre this)}}selected{{/if}}>
+              {{this}}
+            </option>
+            {{/each}}
+          </select>
 
-    <button class="btn btn-primary" type="submit">
-      🔍
-    </button>
-  </div>
-</form>
+          <select name="minRating" class="form-select" style="max-width: 150px;">
+            <option value="">Any rating</option>
+            <option value="9" {{#if (eq minRating "9")}}selected{{/if}}>9+ ★</option>
+            <option value="8" {{#if (eq minRating "8")}}selected{{/if}}>8+ ★</option>
+            <option value="7" {{#if (eq minRating "7")}}selected{{/if}}>7+ ★</option>
+            <option value="6" {{#if (eq minRating "6")}}selected{{/if}}>6+ ★</option>
+          </select>
 
+          <button class="btn btn-primary" type="submit">🔍</button>
+        </div>
+      </form>
 
+      <div class="d-flex align-items-center gap-2">
+        <!-- Add movie (only when logged in, controlled by JS) -->
+        <a href="/movies/new"
+           id="addMovieBtn"
+           class="btn btn-primary rounded-pill px-4">
+          + Add new movie
+        </a>
 
-      <a href="/movies/new" class="btn btn-primary rounded-pill px-4">
-        + Add new movie
-      </a>
+        <!-- Auth buttons -->
+        <a href="/auth/login" id="loginBtn" class="btn btn-outline-secondary rounded-pill px-3">
+          Login
+        </a>
+        <a href="/auth/register" id="registerBtn" class="btn btn-outline-primary rounded-pill px-3">
+          Register
+        </a>
+        <button id="logoutBtn" class="btn btn-outline-danger rounded-pill px-3" style="display:none;">
+          Logout
+        </button>
+      </div>
     </div>
   </nav>
 
   <div class="container py-5">
     {{{body}}}
   </div>
+
+  <script>
+    // Simple client-side auth UI toggle using JWT in localStorage
+    (function () {
+      const token = localStorage.getItem('jwt');
+      const addBtn = document.getElementById('addMovieBtn');
+      const loginBtn = document.getElementById('loginBtn');
+      const registerBtn = document.getElementById('registerBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      if (token) {
+        // logged in: show Add + Logout, hide Login/Register
+        if (addBtn) addBtn.style.display = 'inline-block';
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (registerBtn) registerBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'inline-block';
+      } else {
+        // not logged in: hide Add + Logout, show Login/Register
+        if (addBtn) addBtn.style.display = 'none';
+        if (loginBtn) loginBtn.style.display = 'inline-block';
+        if (registerBtn) registerBtn.style.display = 'inline-block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          localStorage.removeItem('jwt');
+          window.location.href = '/';
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
