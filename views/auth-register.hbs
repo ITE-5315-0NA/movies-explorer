@@ -1,0 +1,43 @@
+<h1 class="mb-4">Register</h1>
+
+<form id="registerForm" class="card p-4 bg-dark border-0 shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Email</label>
+    <input type="email" class="form-control" name="email" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Password</label>
+    <input type="password" class="form-control" name="password" minlength="6" required>
+  </div>
+  <button type="submit" class="btn btn-warning">Register</button>
+  <p class="text-danger mt-3" id="regError" style="display:none;"></p>
+  <p class="text-success mt-3" id="regSuccess" style="display:none;"></p>
+</form>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = e.target.email.value;
+  const password = e.target.password.value;
+
+  const res = await fetch('/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+
+  const err = document.getElementById('regError');
+  const ok = document.getElementById('regSuccess');
+  err.style.display = 'none';
+  ok.style.display = 'none';
+
+  if (!res.ok) {
+    err.textContent = data.error || 'Registration failed';
+    err.style.display = 'block';
+  } else {
+    ok.textContent = 'Registration successful. You can now log in.';
+    ok.style.display = 'block';
+  }
+});
+</script>

@@ -1,0 +1,64 @@
+<h1 class="mb-4">Login</h1>
+
+<form id="loginForm" class="card p-4 bg-dark border-0 shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Email</label>
+    <input type="email" class="form-control" name="email" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Password</label>
+    <input type="password" class="form-control" name="password" required>
+  </div>
+
+  <button type="submit" class="btn btn-warning">Login</button>
+
+  <p class="text-danger mt-3" id="loginError" style="display:none;"></p>
+  <p class="text-success mt-3" id="loginInfo" style="display:none;"></p>
+</form>
+
+<script>
+(function () {
+  // If already logged in, show info
+  const existing = localStorage.getItem('jwt');
+  if (existing) {
+    const info = document.getElementById('loginInfo');
+    info.textContent = 'You are already logged in. Logging in again will replace your current session.';
+    info.style.display = 'block';
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = e.target.email.value.trim();
+    const password = e.target.password.value;
+
+    const res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    const err = document.getElementById('loginError');
+    const info = document.getElementById('loginInfo');
+    err.style.display = 'none';
+    info.style.display = 'none';
+
+    if (!res.ok) {
+      err.textContent = data.error || 'Login failed';
+      err.style.display = 'block';
+    } else if (!data.token) {
+      err.textContent = 'No token received from server.';
+      err.style.display = 'block';
+    } else {
+      // Save token in localStorage and redirect
+      localStorage.setItem('jwt', data.token);
+      info.textContent = 'Login successful. Redirecting...';
+      info.style.display = 'block';
+      window.location.href = '/movies';
+    }
+  });
+})();
+</script>

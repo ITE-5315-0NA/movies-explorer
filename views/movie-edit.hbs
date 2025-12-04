@@ -1,14 +1,9 @@
-{{!-- views/movie-edit.hbs --}}
-
 <div class="container py-5">
   <h1 class="mb-4">
     {{#if (eq mode "edit")}}Edit Movie{{else}}Add Movie{{/if}}
   </h1>
 
-  <form method="POST"
-        action="{{#if (eq mode "edit")}}/movie/{{movie.id}}?_method=PUT{{else}}/movies{{/if}}">
-
-    {{!-- Only show ID input on create --}}
+  <form id="movieForm" class="card p-4 bg-dark border-0 shadow-sm">
     {{#unless movie.id}}
     <div class="mb-3">
       <label class="form-label">TMDB ID</label>
@@ -46,9 +41,64 @@
       </div>
     </div>
 
-    <button type="submit" class="btn btn-primary rounded-pill px-4">
-      {{#if (eq mode "edit")}}Save Changes{{else}}Create Movie{{/if}}
-    </button>
-    <a href="/movies" class="btn btn-outline-secondary rounded-pill px-4 ms-2">Cancel</a>
+    <div class="mt-3">
+      <button type="submit" class="btn btn-primary rounded-pill px-4">
+        {{#if (eq mode "edit")}}Save Changes{{else}}Create Movie{{/if}}
+      </button>
+      <a href="/movies" class="btn btn-outline-secondary rounded-pill px-4 ms-2">Cancel</a>
+    </div>
+
+    <p class="text-danger mt-3" id="movieError" style="display:none;"></p>
   </form>
 </div>
+
+<script>
+document.getElementById('movieForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const token = localStorage.getItem('jwt');
+  const errorEl = document.getElementById('movieError');
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!token) {
+    errorEl.textContent = 'You must be logged in to save a movie.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const formData = new FormData(e.target);
+  const body = {};
+  formData.forEach((v, k) => body[k] = v);
+
+  const mode = '{{mode}}'; // "create" or "edit"
+  const url = mode === 'edit'
+    ? `/api/movies/{{movie.id}}`
+    : '/api/movies';
+  const method = mode === 'edit' ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Save failed.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    window.location.href = `/movie/${data.id}`;
+  } catch (err) {
+    errorEl.textContent = 'Network error while saving movie.';
+    errorEl.style.display = 'block';
+  }
+});
+</script>
