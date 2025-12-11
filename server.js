@@ -8,6 +8,9 @@ require('dotenv').config();
 
 const Movie = require('./models/movie');        // Movie model
 const User = require('./models/user');          // User model
+const WatchlistItem = require('./models/watchlistItem');
+const Review = require('./models/review');
+
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const auth = require('./middleware/auth');      // auth middleware
@@ -185,7 +188,7 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
-// ---------- ROUTES ----------
+// ---------- PAGE ROUTES ----------
 
 // Home → redirect to listings
 app.get('/', (req, res) => {
@@ -205,9 +208,9 @@ app.get('/movies', async (req, res) => {
     const limit = 30;
     const skip = (page - 1) * limit;
 
-   const baseFilter = {
+    const baseFilter = {
       poster_url: {
-       $type: 'string',
+        $type: 'string',
         $ne: ''
       }
     };
@@ -307,100 +310,12 @@ app.get('/movie/:id', async (req, res) => {
   }
 });
 
-// PROTECTED: Show edit form
-app.get('/movie/:id/edit', async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const movieRaw = await Movie.findOne({ id }).lean();
-    if (!movieRaw) {
-      return res.status(404).render('error', {
-        title: 'Not found',
-        message: 'Movie not found'
-      });
-    }
-
-    res.render('movie-edit', {
-      mode: 'edit',
-      movie: movieRaw
-    });
-  } catch (err) {
-    console.error('Error loading edit form:', err);
-    res.status(500).send('Server error');
-  }
+// Watchlist page (HTML shell; data loaded via JS + API)
+app.get('/watchlist', (req, res) => {
+  res.render('watchlist', { title: 'My Watchlist' });
 });
 
-// PROTECTED: Handle edit submit (legacy HTML route; optional)
-app.put('/movie/:id', auth(), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-
-    await Movie.updateOne(
-      { id },
-      {
-        title: req.body.title,
-        overview: req.body.overview,
-        poster_url: req.body.poster_url,
-        runtime: Number(req.body.runtime) || null,
-        release_date: req.body.release_date || null
-      }
-    );
-
-    res.redirect(`/movie/${id}`);
-  } catch (err) {
-    console.error('Error updating movie:', err);
-    res.status(500).send('Server error');
-  }
-});
-
-// PROTECTED: Handle delete (legacy HTML route; optional)
-app.delete('/movie/:id', auth(), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    await Movie.deleteOne({ id });
-    res.redirect('/movies');
-  } catch (err) {
-    console.error('Error deleting movie:', err);
-    res.status(500).send('Server error');
-  }
-});
-
-// Show create form (PAGE IS PUBLIC; saving is protected via /api/movies)
-app.get('/movies/new', (req, res) => {
-  res.render('movie-edit', {
-    mode: 'create',
-    movie: {}
-  });
-});
-
-// (Optional legacy HTML POST /movies remains protected)
-app.post('/movies', auth(), async (req, res) => {
-  try {
-    const movieData = {
-      id: Number(req.body.id),
-      title: req.body.title,
-      poster_url: req.body.poster_url,
-      overview: req.body.overview,
-      vote_average: req.body.vote_average ? Number(req.body.vote_average) : null,
-      runtime: req.body.runtime ? Number(req.body.runtime) : null,
-      release_date: req.body.release_date || null,
-      budget: req.body.budget ? Number(req.body.budget) : 0,
-      adult: req.body.adult === 'on' || req.body.adult === 'true'
-    };
-
-    const movie = new Movie(movieData);
-    await movie.save();
-
-    res.redirect(`/movie/${movie.id}`);
-  } catch (err) {
-    console.error('Error creating movie:', err);
-    res.status(400).render('error', {
-      title: 'Create failed',
-      message: `Could not create movie: ${err.message}`
-    });
-  }
-});
-
-// ---------- JSON API ROUTES ----------
+// ---------- JSON API ROUTES: MOVIES (READ ONLY) ----------
 
 // GET /api/movies  -> list with pagination + search + genre + rating
 app.get('/api/movies', async (req, res) => {
@@ -486,48 +401,121 @@ app.get('/api/movies/:id', async (req, res) => {
   }
 });
 
-// PROTECTED: POST /api/movies  -> create new movie
-app.post('/api/movies', auth(), async (req, res) => {
+// ---------- JSON API ROUTES: WATCHLIST (USER CRUD) ----------
+
+// ADD to watchlist (Create)
+app.post('/api/watchlist', auth(), async (req, res) => {
   try {
-    const movie = new Movie(req.body);
-    await movie.save();
-    res.status(201).json(movie);
+    const { movieId, movieTitle, poster_url, status } = req.body;
+    const item = new WatchlistItem({
+      user: req.user.id,
+      movieId,
+      movieTitle,
+      poster_url,
+      status: status || 'planned'
+    });
+    await item.save();
+    res.status(201).json(item);
   } catch (err) {
-    console.error('Error in POST /api/movies:', err);
+    console.error('Error in POST /api/watchlist:', err);
     res.status(400).json({ error: 'Invalid data', details: err.message });
   }
 });
 
-// PROTECTED: PUT /api/movies/:id  -> update movie
-app.put('/api/movies/:id', auth(), async (req, res) => {
+// GET my watchlist (Read)
+app.get('/api/watchlist', auth(), async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const updated = await Movie.findOneAndUpdate(
-      { id },
-      req.body,
-      { new: true, runValidators: true }
-    ).lean();
-    if (!updated) {
-      return res.status(404).json({ error: 'Movie not found' });
-    }
-    res.json(updated);
+    const items = await WatchlistItem.find({ user: req.user.id }).lean();
+    res.json(items);
   } catch (err) {
-    console.error('Error in PUT /api/movies/:id:', err);
-    res.status(400).json({ error: 'Invalid data', details: err.message });
+    console.error('Error in GET /api/watchlist:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// PROTECTED: DELETE /api/movies/:id  -> delete movie
-app.delete('/api/movies/:id', auth(), async (req, res) => {
+// DELETE watchlist item (Delete)
+app.delete('/api/watchlist/:id', auth(), async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const result = await Movie.deleteOne({ id });
+    const result = await WatchlistItem.deleteOne({
+      _id: req.params.id,
+      user: req.user.id
+    });
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Movie not found' });
+      return res.status(404).json({ error: 'Item not found' });
     }
     res.json({ success: true });
   } catch (err) {
-    console.error('Error in DELETE /api/movies/:id:', err);
+    console.error('Error in DELETE /api/watchlist/:id:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ---------- JSON API ROUTES: REVIEWS (USER CRUD) ----------
+
+// CREATE review
+app.post('/api/movies/:id/reviews', auth(), async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const review = new Review({
+      user: req.user.id,
+      movieId: Number(req.params.id),
+      rating,
+      comment
+    });
+    await review.save();
+    res.status(201).json(review);
+  } catch (err) {
+    console.error('Error in POST /api/movies/:id/reviews:', err);
+    res.status(400).json({ error: 'Invalid data', details: err.message });
+  }
+});
+
+// READ reviews for a movie
+app.get('/api/movies/:id/reviews', async (req, res) => {
+  try {
+    const movieId = Number(req.params.id);
+    const reviews = await Review.find({ movieId })
+      .populate('user', 'email')
+      .lean();
+    res.json(reviews);
+  } catch (err) {
+    console.error('Error in GET /api/movies/:id/reviews:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// UPDATE my review
+app.put('/api/reviews/:id', auth(), async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const updated = await Review.findOneAndUpdate(
+      { _id: req.params.id, user: req.user.id },
+      { rating, comment },
+      { new: true, runValidators: true }
+    ).lean();
+    if (!updated) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error('Error in PUT /api/reviews/:id:', err);
+    res.status(400).json({ error: 'Invalid data', details: err.message });
+  }
+});
+
+// DELETE my review
+app.delete('/api/reviews/:id', auth(), async (req, res) => {
+  try {
+    const result = await Review.deleteOne({
+      _id: req.params.id,
+      user: req.user.id
+    });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in DELETE /api/reviews/:id:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

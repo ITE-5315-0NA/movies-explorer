@@ -45,26 +45,28 @@
           <button class="btn btn-primary" type="submit">🔍</button>
         </div>
       </form>
+<div class="d-flex align-items-center gap-2 ms-3">
+  <a class="nav-link px-3 py-1 rounded-pill text-white bg-transparent watchlist-link"
+     href="/watchlist">
+    My Watchlist
+  </a>
 
-      <div class="d-flex align-items-center gap-2">
-        <!-- Add movie (only when logged in, controlled by JS) -->
-        <a href="/movies/new"
-           id="addMovieBtn"
-           class="btn btn-primary rounded-pill px-4">
-          + Add new movie
-        </a>
+  <a href="/auth/login" id="loginBtn"
+     class="btn btn-outline-secondary rounded-pill px-3">
+    Login
+  </a>
+  <a href="/auth/register" id="registerBtn"
+     class="btn btn-outline-primary rounded-pill px-3">
+    Register
+  </a>
+  <button id="logoutBtn"
+          class="btn btn-outline-danger rounded-pill px-3"
+          style="display:none;">
+    Logout
+  </button>
+</div>
 
-        <!-- Auth buttons -->
-        <a href="/auth/login" id="loginBtn" class="btn btn-outline-secondary rounded-pill px-3">
-          Login
-        </a>
-        <a href="/auth/register" id="registerBtn" class="btn btn-outline-primary rounded-pill px-3">
-          Register
-        </a>
-        <button id="logoutBtn" class="btn btn-outline-danger rounded-pill px-3" style="display:none;">
-          Logout
-        </button>
-      </div>
+
     </div>
   </nav>
 

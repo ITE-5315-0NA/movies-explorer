@@ -1,43 +1,118 @@
-<h1 class="mb-4">Register</h1>
+<div class="auth-page">
+  <div class="auth-overlay"></div>
 
-<form id="registerForm" class="card p-4 bg-dark border-0 shadow-sm">
-  <div class="mb-3">
-    <label class="form-label">Email</label>
-    <input type="email" class="form-control" name="email" required>
+  <div class="auth-card">
+    <div class="auth-header text-center mb-4">
+      <div class="auth-icon mb-3">
+        <span>🎬</span>
+      </div>
+      <h1 class="h3 mb-1">Create your account</h1>
+      <p class="text-muted mb-0">Join Movies Explorer to save watchlists and write reviews.</p>
+    </div>
+
+    <form id="registerForm" class="auth-form">
+      <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <input
+          type="email"
+          class="form-control auth-input"
+          id="email"
+          placeholder="you@example.com"
+          required
+        >
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="password">Password</label>
+        <input
+          type="password"
+          class="form-control auth-input"
+          id="password"
+          placeholder="Create a password"
+          required
+        >
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="confirmPassword">Confirm password</label>
+        <input
+          type="password"
+          class="form-control auth-input"
+          id="confirmPassword"
+          placeholder="Re‑enter your password"
+          required
+        >
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-warning w-100 auth-submit-btn mb-2"
+      >
+        Sign up
+      </button>
+
+      <p class="text-danger small mt-1" id="registerError" style="display:none;"></p>
+
+      <div class="auth-footer text-center mt-3">
+        <span class="text-muted">Already have an account?</span>
+        <a href="/auth/login" class="auth-link ms-1">Log in</a>
+      </div>
+    </form>
   </div>
-  <div class="mb-3">
-    <label class="form-label">Password</label>
-    <input type="password" class="form-control" name="password" minlength="6" required>
-  </div>
-  <button type="submit" class="btn btn-warning">Register</button>
-  <p class="text-danger mt-3" id="regError" style="display:none;"></p>
-  <p class="text-success mt-3" id="regSuccess" style="display:none;"></p>
-</form>
+</div>
 
 <script>
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = e.target.email.value;
-  const password = e.target.password.value;
+(function () {
+  const form = document.getElementById('registerForm');
+  const errorEl = document.getElementById('registerError');
 
-  const res = await fetch('/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  const data = await res.json();
-
-  const err = document.getElementById('regError');
-  const ok = document.getElementById('regSuccess');
-  err.style.display = 'none';
-  ok.style.display = 'none';
-
-  if (!res.ok) {
-    err.textContent = data.error || 'Registration failed';
-    err.style.display = 'block';
-  } else {
-    ok.textContent = 'Registration successful. You can now log in.';
-    ok.style.display = 'block';
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
   }
-});
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.style.display = 'none';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+    if (!email || !password || !confirmPassword) {
+      showError('Please fill in all fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showError('Passwords do not match.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        showError(data.error || 'Unable to register. Please try again.');
+        return;
+      }
+
+      // Optional: auto-login after register if API returns token
+      if (data.token) {
+        localStorage.setItem('jwt', data.token);
+        window.location.href = '/movies';
+      } else {
+        window.location.href = '/auth/login';
+      }
+    } catch (err) {
+      showError('Network error while registering. Please try again.');
+    }
+  });
+})();
 </script>

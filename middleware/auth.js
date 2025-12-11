@@ -1,4 +1,4 @@
-// middleware/auth.js
+// middleware
 const jwt = require('jsonwebtoken');
 
 function auth(requiredRole = null) {
@@ -12,7 +12,7 @@ function auth(requiredRole = null) {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded; // { id, role }
+      req.user = decoded; 
       if (requiredRole && decoded.role !== requiredRole) {
         return res.status(403).json({ error: 'Forbidden' });
       }

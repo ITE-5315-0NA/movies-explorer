@@ -1,0 +1,103 @@
+{{!-- views/watchlist.hbs --}}
+
+<div class="container py-4">
+  <h1 class="h3 mb-4">My Watchlist</h1>
+
+  <div id="watchlistContent">
+    <p class="text-muted">Loading your watchlist...</p>
+  </div>
+
+  <p class="text-danger mt-3" id="watchlistError" style="display:none;"></p>
+</div>
+
+<script>
+(function () {
+  const token = localStorage.getItem('jwt');
+  const contentEl = document.getElementById('watchlistContent');
+  const errorEl = document.getElementById('watchlistError');
+
+  if (!token) {
+    window.location.href = '/auth/login?redirect=/watchlist';
+    return;
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  async function loadWatchlist() {
+    try {
+      const res = await fetch('/api/watchlist', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const items = await res.json().catch(() => []);
+
+      if (!res.ok) {
+        showError(items.error || 'Failed to load watchlist.');
+        return;
+      }
+
+      if (!Array.isArray(items) || items.length === 0) {
+        contentEl.innerHTML = '<p class="text-muted">Your watchlist is empty.</p>';
+        return;
+      }
+
+      contentEl.innerHTML = `
+        <div class="row g-4">
+          ${items.map(item => `
+            <div class="col-sm-6 col-md-4 col-lg-3">
+              <div class="card h-100 border-0 shadow-sm movie-card bg-dark text-white rounded-4 overflow-hidden">
+                <div class="ratio ratio-4x3 position-relative">
+                  <img src="${item.poster_url}"
+                       alt="${item.movieTitle}"
+                       class="card-img-top object-fit-cover movie-poster-img">
+                </div>
+                <div class="card-body d-flex flex-column justify-content-between">
+                  <h5 class="card-title mb-3 text-truncate">${item.movieTitle}</h5>
+                  <div class="d-flex justify-content-between">
+                    <a href="/movie/${item.movieId}"
+                       class="btn btn-sm btn-danger rounded-pill px-3">
+                      View details
+                    </a>
+                    <button class="btn btn-sm btn-outline-light rounded-pill px-3"
+                            data-id="${item._id}">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      contentEl.querySelectorAll('button[data-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (!confirm('Remove from watchlist?')) return;
+          try {
+            const resDel = await fetch('/api/watchlist/' + id, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!resDel.ok) {
+              const dataDel = await resDel.json().catch(() => ({}));
+              showError(dataDel.error || 'Failed to remove item.');
+              return;
+            }
+            loadWatchlist();
+          } catch (err) {
+            showError('Network error while removing item.');
+          }
+        });
+      });
+
+    } catch (err) {
+      showError('Network error while loading watchlist.');
+    }
+  }
+
+  loadWatchlist();
+})();
+</script>
